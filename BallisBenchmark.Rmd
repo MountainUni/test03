@@ -1,0 +1,165 @@
+---
+title: "Ballis's Benchmark Analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r configuration, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(width = 80)
+library(data.table)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(sqldf)
+#library(xlsx)
+```
+
+
+## Analysis Setup
+```{r setup}
+pathData <- "C:\\Users\\Larry\\Dropbox\\Family\\LBTentor\\Professional\\Teaching\\Decision Analytics\\Analytics Formulation\\Fall 2018\\Session 02\\Ballis Benchmark\\"
+```
+
+## Analysis Load Data
+### Head of data frame
+```{r Load}
+#fundData <- read.xlsx(paste0(pathData,"Ballis Benchmark A F-1621X.xlsx"), sheetName = "Downloaded Data")
+rowsToLoad <- Inf
+fundData <- fread(paste0(pathData,"MorningstarData.txt"),sep="\t",nrows=rowsToLoad,header=TRUE)
+head(fundData[,1:4])
+```
+
+### Tail of data frame
+```{r}
+tail(fundData[,1:4])
+```
+
+### Field Names
+```{r}
+options(width=92)
+names(fundData)
+```
+
+## Analysis: Determine Counts
+
+### Count By Benchmark
+```{r}
+# Alternatives
+fundData$Benchmark <- factor(fundData$"Primary Prospectus Benchmark")
+Benchmark          <- fundData$"Primary Prospectus Benchmark"
+Size               <- fundData$"Fund Size"
+fundData2          <- data.frame(Benchmark)
+countBenchmark01   <- count(fundData2, Benchmark)
+countBenchmark02   <- aggregate(fundData2, by = list(Benchmark), FUN = length)
+
+# Simpliest
+countBenchmark     <- aggregate(fundData$"Primary Prospectus Benchmark", by = list(fundData$"Primary Prospectus Benchmark"), FUN = length)
+countBenchmark     <- countBenchmark[order(-countBenchmark$x),]
+head(countBenchmark,10)
+
+```
+### Count By Global Category
+```{r}
+countGlobalCategory     <- aggregate(fundData$"Global Category", by = list(fundData$"Global Category"), FUN = length)
+countGlobalCategory     <- countGlobalCategory[order(-countGlobalCategory$x),]
+head(countGlobalCategory,10)
+```
+
+### Count By Global Category
+```{r}
+countMorningstarCategory     <- aggregate(fundData$"Morningstar Category", by = list(fundData$"Morningstar Category"), FUN = length)
+countMorningstarCategory     <- countMorningstarCategory[order(-countMorningstarCategory$x),]
+head(countMorningstarCategory,10)
+```
+
+## Subset Data
+```{r}
+keepSP     <- fundData$`Primary Prospectus Benchmark` =='S&P 500 TR' 
+keep2000   <- !is.na(fundData$`Yearly Return 2000`)
+keep       <- keepSP & keep2000
+fundDataSP <- fundData[keep,]
+message('        Starting Number of Funds: ', nrow(fundData))
+message('     Number of SP 500 Benchmarks: ',sum(keepSP))
+message('Number of Funds with 2000 Return: ',sum(keep2000))
+message('        Number of Analysis Funds: ',sum(keep))
+message('       Number of funds remaining: ',nrow(fundDataSP))
+head(fundDataSP[,c(1:3,12,32)])
+tail(fundDataSP[,c(1:3,12,32)])
+```
+## Calculate Bucket Returns
+```{r}
+fundDataSP$ReturnBucket01 <- ((1+fundDataSP$`Yearly Return 2000`/100)*(1+fundDataSP$`Yearly Return 2001`/100)*(1+fundDataSP$`Yearly Return 2002`/100)*(1+fundDataSP$`Yearly Return 2003`/100)*(1+fundDataSP$`Yearly Return 2004`/100)-1)*100
+fundDataSP$ReturnBucket02 <- ((1+fundDataSP$`Yearly Return 2005`/100)*(1+fundDataSP$`Yearly Return 2006`/100)*(1+fundDataSP$`Yearly Return 2007`/100)*(1+fundDataSP$`Yearly Return 2008`/100)*(1+fundDataSP$`Yearly Return 2009`/100)-1)*100
+fundDataSP$Quartile01 <- ntile(fundDataSP$ReturnBucket01, 4) 
+fundDataSP$Quartile02 <- ntile(fundDataSP$ReturnBucket02, 4) 
+
+head(fundDataSP[,c('Name','ReturnBucket01','ReturnBucket02','Quartile01','Quartile02')])
+```
+
+### Transistion Matrix
+```{r}
+countQuartileTransition     <- aggregate(fundDataSP$Name, by = list(fundDataSP$Quartile01,fundDataSP$Quartile02), FUN = length)
+countQuartileTransition
+transitionMat <- matrix(, nrow = 4, ncol = 4)
+for(row in 1:16){
+  transitionMat[countQuartileTransition$Group.1[row], countQuartileTransition$Group.2[row]] <- countQuartileTransition$x[row]
+}
+#transitionMat[countQuartileTransition$Group.1,countQuartileTransition$Group.2] <- countQuartileTransition$x  
+transitionMat
+transitionMat/sum(transitionMat)
+```
+## Calculate Fund Flow
+```{r}
+fundDataSP$FundFlow01 <- (fundDataSP$`Fund Size 2001-12`-fundDataSP$`Fund Size 2000-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2000-12`
+fundDataSP$FundFlow02 <- (fundDataSP$`Fund Size 2002-12`-fundDataSP$`Fund Size 2001-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2001-12`
+fundDataSP$FundFlow03 <- (fundDataSP$`Fund Size 2003-12`-fundDataSP$`Fund Size 2002-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2002-12`
+fundDataSP$FundFlow04 <- (fundDataSP$`Fund Size 2004-12`-fundDataSP$`Fund Size 2003-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2003-12`
+fundDataSP$FundFlow05 <- (fundDataSP$`Fund Size 2005-12`-fundDataSP$`Fund Size 2004-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2004-12`
+fundDataSP$FundFlow06 <- (fundDataSP$`Fund Size 2006-12`-fundDataSP$`Fund Size 2005-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2005-12`
+fundDataSP$FundFlow07 <- (fundDataSP$`Fund Size 2007-12`-fundDataSP$`Fund Size 2006-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2006-12`
+fundDataSP$FundFlow08 <- (fundDataSP$`Fund Size 2008-12`-fundDataSP$`Fund Size 2007-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2007-12`
+fundDataSP$FundFlow09 <- (fundDataSP$`Fund Size 2009-12`-fundDataSP$`Fund Size 2008-12`*(1+fundDataSP$`Yearly Return 2000`/100))/fundDataSP$`Fund Size 2008-12`
+
+fundDataSP$Growth05 <- ifelse(fundDataSP$FundFlow05>median(fundDataSP$FundFlow05, na.rm=TRUE),1,-1)
+fundDataSP$Growth05[is.na(fundDataSP$Growth05)] <- 0
+head(fundDataSP[,c('Name','ReturnBucket01','ReturnBucket02','Quartile01','Quartile02','FundFlow05','Growth05')])
+```
+
+### Transistion Matrix
+```{r}
+countQuartileTransitionByGrowth     <- aggregate(fundDataSP$Name, by = list(fundDataSP$Quartile01,fundDataSP$Quartile02,fundDataSP$Growth05), FUN = length)
+countQuartileTransitionByGrowth$Group.3 <- countQuartileTransitionByGrowth$Group.3+2
+countQuartileTransitionByGrowth
+```
+
+```{r}
+transitionMatGrowth <- array(0, dim=c(4,4,3))
+for(row in 1:nrow(countQuartileTransitionByGrowth)){
+  transitionMatGrowth[countQuartileTransitionByGrowth$Group.1[row], countQuartileTransitionByGrowth$Group.2[row], countQuartileTransitionByGrowth$Group.3[row]] <- countQuartileTransitionByGrowth$x[row]
+  
+  #message(paste0('['
+  #               ,countQuartileTransitionByGrowth$Group.1[row],','
+  #               ,countQuartileTransitionByGrowth$Group.2[row],','
+  #               ,countQuartileTransitionByGrowth$Group.3[row],'] = '
+  #               ,countQuartileTransitionByGrowth$x[row]))
+}
+transitionMatGrowth[,,1]
+```
+
+```{r}
+transitionMatGrowth[,,2]
+```
+
+```{r}
+transitionMatGrowth[,,3]
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
