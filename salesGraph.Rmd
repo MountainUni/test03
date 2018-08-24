@@ -6,6 +6,13 @@ output:
     df_print: paged
 ---
 
+*Instructions*
+  1. GitHub Account Setup through website
+  2. Install GitHub Desktop
+  3. Create Repository on website
+
+
+
 ```{r setup, include=FALSE}
 
 ```
@@ -34,3 +41,23 @@ Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by press
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+Mathematical displays are marked off with `\[` and `\]`, as in
+\[
+e^{i \pi} = -1
+\]
+\[
+\frac{a+b}{b} = 1 + \frac{a}{b}
+\]
+\[
+A_{m,n} =
+ \begin{pmatrix}
+  a_{1,1} & a_{1,2} & \cdots & a_{1,n} \\
+  a_{2,1} & a_{2,2} & \cdots & a_{2,n} \\
+  \vdots  & \vdots  & \ddots & \vdots  \\
+  a_{m,1} & a_{m,2} & \cdots & a_{m,n}
+ \end{pmatrix}
+\]
+\[
+\sum_{i=1}^{n}{x_i^2}
+\]
