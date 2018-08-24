@@ -29,7 +29,7 @@ pathData <- "C:\\Users\\Larry\\Dropbox\\Family\\LBTentor\\Professional\\Teaching
 ```{r Load}
 #fundData <- read.xlsx(paste0(pathData,"Ballis Benchmark A F-1621X.xlsx"), sheetName = "Downloaded Data")
 rowsToLoad <- Inf
-fundData <- fread(paste0(pathData,"MorningstarData.txt"),sep="\t",nrows=rowsToLoad,header=TRUE)
+fundData   <- fread(paste0(pathData,"MorningstarData.txt"),sep="\t",nrows=rowsToLoad,header=TRUE)
 head(fundData[,1:4])
 ```
 
